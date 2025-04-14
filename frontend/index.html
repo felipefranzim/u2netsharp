@@ -18,13 +18,10 @@
         const imageInput = document.getElementById('imageInput');
         const previewImage = document.getElementById('previewImage');
 
-        // Initialize the U2NetSharpConnector
-        const connector = new U2NetSharpConnector();
-
         // Callback para lidar com mensagens recebidas
         const onMessageReceived = (message) => {
             console.log(message);
-            
+
             if(!message.success){
                 alert(message.errorMessage);
                 return;
@@ -33,7 +30,10 @@
             previewImage.src = `data:image/jpg;base64,${message.image}`; // Atualiza a imagem com a resposta do servidor
         };
 
-        connector.connect(onMessageReceived);
+        // Initialize the U2NetSharpConnector
+        const connector = new U2NetSharpConnector();
+
+        connector.connect(onMessageReceived); // Se conecta ao serviço
 
         imageInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
@@ -44,7 +44,7 @@
                     previewImage.src = e.target.result;
                     previewImage.style.display = 'block';
 
-                    connector.sendMessage(base64String);
+                    connector.sendMessage(base64String); // Envia a mensagem para o serviço
                 };
                 reader.readAsDataURL(file);
             }
