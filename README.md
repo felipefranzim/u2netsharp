@@ -7,13 +7,18 @@
 
 U2NetSharp simplifies the automatic removal of image backgrounds using the U2Net model. Additionally, the project includes a WebSocket server (`U2NetSharp.Server`) that allows clients to send images and receive processed images with the background removed.
 
+This repository also contains a small frontend for testing the WebSocket service. The frontend connects to the WebSocket server on port `8075` and facilitates image uploads for background removal.
+
 ## 🚀 Features
 
-1. **Library Usage**: 
-   - The library can be instantiated directly to remove the background of an image passed to it.
+### **Library Usage**
+- The library can be instantiated directly to remove the background of an image passed to it.
 
-2. **WebSocket Server**: 
-   - The `U2NetSharp.Server` project initializes a WebSocket server on port `8075`, enabling clients to send images to the service for background removal.
+### **WebSocket Server**
+- The `U2NetSharp.Server` project initializes a WebSocket server on port `8075`, enabling clients to send images to the service for background removal.
+
+### **Frontend for Testing**
+- The frontend, located at [`frontend`](https://github.com/felipefranzim/u2netsharp/tree/main/frontend), provides an interface to test the WebSocket service.
 
 ## 🛠️ Tech Stack
 
@@ -81,6 +86,39 @@ If you wish to install and run the server as a Windows service:
    ```bash
    sc delete U2NetSharpServer
    ```
+
+---
+
+## 🖥️ Frontend Integration
+
+The frontend is located in the [`frontend`](https://github.com/felipefranzim/u2netsharp/tree/main/frontend) folder and includes:
+
+1. **`U2NetSharpConnector.js`**: A JavaScript class that handles the WebSocket connection to the server on port `8075`. It includes methods to:
+   - Connect to the WebSocket server.
+   - Send image data in Base64 format.
+   - Receive processed images from the server.
+
+2. **`index.html`**: A simple HTML page for testing the service. It allows users to:
+   - Select an image file.
+   - Preview the selected image.
+   - Send the image to the WebSocket server for background removal.
+   - Display the processed image returned by the server.
+
+### **Frontend Workflow**
+
+Here’s how the integration works:
+
+1. The `U2NetSharpConnector` class is instantiated and used to establish a WebSocket connection (`ws://localhost:8075/background-removal`).
+2. When an image is selected via the file input, it is converted to a Base64 string using a `FileReader`.
+3. The Base64 string is sent to the server using the `sendMessage` method of the `U2NetSharpConnector` class.
+4. The server processes the image and sends back the result as a Base64 string.
+5. The processed image is displayed in the browser.
+
+### **Usage Example**
+
+1. Open the `index.html` file in a browser.
+2. Select an image file using the file input.
+3. The image will be sent to the WebSocket server, and the processed image will be displayed once the server responds.
 
 ---
 
