@@ -21,7 +21,7 @@ public sealed class BackgroundRemoval
         if(_inferenceSession == null)
         {
             Console.WriteLine("Loading model...");
-            _inferenceSession = new InferenceSession($"OnnxModels\\u2net{(UseLightweightModel ? "p" : "")}.onnx");
+            _inferenceSession = new InferenceSession($"{AppDomain.CurrentDomain.BaseDirectory}OnnxModels\\u2net{(UseLightweightModel ? "p" : "")}.onnx");
         }
     }
 
@@ -45,24 +45,27 @@ public sealed class BackgroundRemoval
                 var outputResult = results.First(r => r.AsTensor<float>().Dimensions.SequenceEqual(new[] { 1, 1, 320, 320 }));
                 var output = outputResult.AsTensor<float>().ToArray();
 
-                using var originalImage = Image.Load<Rgba32>(ms);
-
-                Console.WriteLine("Applying mask...");
-                var mask = ImageProcessing.PostprocessMask(output, originalImage.Width, originalImage.Height);
-                mask.Mutate(x =>
+                using(var originalMs = new MemoryStream(image))
                 {
-                    x.GaussianBlur(2); // Suaviza bordas abruptas
-                });
+                    using var originalImage = Image.Load<Rgba32>(originalMs);
 
-                ImageProcessing.Binarize(mask, 0.6f); // Binariza a máscara
+                    Console.WriteLine("Applying mask...");
+                    var mask = ImageProcessing.PostprocessMask(output, originalImage.Width, originalImage.Height);
+                    mask.Mutate(x =>
+                    {
+                        x.GaussianBlur(2); // Suaviza bordas abruptas
+                    });
 
-                var final = ImageProcessing.ApplyMaskWithWhiteBackground(originalImage.CloneAs<Rgba32>(), mask);
+                    ImageProcessing.Binarize(mask, 0.6f); // Binariza a máscara
 
-                using (var finalMs = new MemoryStream())
-                {
-                    final.SaveAsJpeg(finalMs, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder() { Quality = 100 });
+                    var final = ImageProcessing.ApplyMaskWithWhiteBackground(originalImage.CloneAs<Rgba32>(), mask);
 
-                    return finalMs.ToArray();
+                    using (var finalMs = new MemoryStream())
+                    {
+                        final.SaveAsJpeg(finalMs, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder() { Quality = 100 });
+
+                        return finalMs.ToArray();
+                    }
                 }
             }
         }

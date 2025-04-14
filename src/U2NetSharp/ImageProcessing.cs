@@ -12,7 +12,7 @@ public static class ImageProcessing
         image.Mutate(x =>
         {
             x.Grayscale();             // Converte para escala de cinza
-            x.GaussianBlur(1.5f);      // Reduz ruídos
+            x.GaussianBlur(2.5f);      // Reduz ruídos
             x.Resize(320, 320);
         });
 

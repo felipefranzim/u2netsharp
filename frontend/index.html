@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U2NetSharpConnect Test</title>
+</head>
+
+<body>
+    <h1>U2NetSharpConnect Test</h1>
+    <script src="U2NetSharpConnector.js"></script>
+    
+    <input type="file" id="imageInput" accept="image/*">
+    <img id="previewImage" style="max-width: 100%; height: auto; display: none;" alt="Image Preview">
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const previewImage = document.getElementById('previewImage');
+
+        // Initialize the U2NetSharpConnector
+        const connector = new U2NetSharpConnector();
+
+        // Callback para lidar com mensagens recebidas
+        const onMessageReceived = (message) => {
+            console.log(message);
+            
+            if(!message.success){
+                alert(message.errorMessage);
+                return;
+            }
+
+            previewImage.src = `data:image/jpg;base64,${message.image}`; // Atualiza a imagem com a resposta do servidor
+        };
+
+        connector.connect(onMessageReceived);
+
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64String = e.target.result.split(',')[1]; // Obtém a base64 sem o prefixo
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+
+                    connector.sendMessage(base64String);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+
+</html>
