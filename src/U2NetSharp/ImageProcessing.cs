@@ -16,7 +16,8 @@ public static class ImageProcessing
             x.Resize(320, 320);
         });
 
-        float[] mean = { 0.485f, 0.456f, 0.406f }; // BGR
+        // Valores de média e desvio padrão em RGB
+        float[] mean = { 0.485f, 0.456f, 0.406f }; // RGB
         float[] std = { 0.229f, 0.224f, 0.225f };
 
         var input = new float[3 * 320 * 320];
@@ -28,10 +29,10 @@ public static class ImageProcessing
 
                 int idx = y * 320 + x;
 
-                // BGR order
-                input[0 * 320 * 320 + idx] = ((pixel.B / 255f) - mean[0]) / std[0];
+                // RGB order (corrigido)
+                input[0 * 320 * 320 + idx] = ((pixel.R / 255f) - mean[0]) / std[0];
                 input[1 * 320 * 320 + idx] = ((pixel.G / 255f) - mean[1]) / std[1];
-                input[2 * 320 * 320 + idx] = ((pixel.R / 255f) - mean[2]) / std[2];
+                input[2 * 320 * 320 + idx] = ((pixel.B / 255f) - mean[2]) / std[2];
             }
         }
 
@@ -53,8 +54,8 @@ public static class ImageProcessing
 
         mask.Mutate(x =>
         {
-            x.GaussianBlur(2); // Suaviza bordas, para evitar bordas duras ou detalhes excessivos nas transições -> Ex: 1 (desfoque mais leve) | 5 (desfoque mais intenso)
-            x.Resize(originalWidth, originalHeight, KnownResamplers.Bicubic);
+            //x.GaussianBlur(3); // Suaviza bordas, para evitar bordas duras ou detalhes excessivos nas transições -> Ex: 1 (desfoque mais leve) | 5 (desfoque mais intenso)
+            x.Resize(originalWidth, originalHeight, KnownResamplers.Lanczos3);
         });
         return mask;
     }
@@ -85,18 +86,38 @@ public static class ImageProcessing
             {
                 byte alpha = mask[x, y].PackedValue;
 
-                if (alpha > 10) // Mantém o pixel se a máscara indica que faz parte da pessoa
-                {
-                    output[x, y] = image[x, y];
-                }
-                else // Caso contrário, pinta de branco
-                {
-                    output[x, y] = white;
-                }
+                // Mistura gradual do alpha
+                output[x, y] = new Rgba32(
+                    (byte)((image[x, y].R * alpha + white.R * (255 - alpha)) / 255),
+                    (byte)((image[x, y].G * alpha + white.G * (255 - alpha)) / 255),
+                    (byte)((image[x, y].B * alpha + white.B * (255 - alpha)) / 255),
+                    255
+                );
             }
         }
 
         return output;
+    }
+
+    public static Image<L8> SmoothBorders(Image<Rgba32> image, Image<L8> mask)
+    {
+        for (int y = 0; y < image.Height; y++)
+        {
+            for (int x = 0; x < image.Width; x++)
+            {
+                byte alpha = mask[x, y].PackedValue;
+
+                // Reduz o alpha gradualmente nas bordas
+                if (alpha > 0 && alpha < 255)
+                {
+                    alpha = (byte)(alpha * 0.9); // Ajustar o fator conforme necessário
+                }
+
+                mask[x, y] = new L8(alpha);
+            }
+        }
+
+        return mask;
     }
 
     /// <summary>
@@ -122,5 +143,242 @@ public static class ImageProcessing
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// Aplica a operação de Erosão na imagem (L8).
+    /// Contrai áreas brancas ao redor de pixels brilhantes.
+    /// </summary>
+    public static void Erode(this Image<L8> image, int radius)
+    {
+        // Faz uma cópia da imagem para referência durante a erosão
+        var copy = image.Clone();
+
+        // Itera diretamente sobre os pixels
+        for (int y = 0; y < image.Height; y++)
+        {
+            for (int x = 0; x < image.Width; x++)
+            {
+                // Verifica se algum pixel vizinho é preto
+                if (IsNeighborBlack(copy, x, y, radius))
+                {
+                    image[x, y] = new L8(0); // Torna o pixel preto
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Aplica a operação de Dilatação na imagem (L8).
+    /// Expande áreas brancas ao redor de pixels brilhantes.
+    /// </summary>
+    public static void Dilate(this Image<L8> image, int radius)
+    {
+        // Faz uma cópia da imagem para referência durante a dilatação
+        var copy = image.Clone();
+
+        // Itera diretamente sobre os pixels
+        for (int y = 0; y < image.Height; y++)
+        {
+            for (int x = 0; x < image.Width; x++)
+            {
+                // Verifica se algum pixel vizinho é branco
+                if (IsNeighborWhite(copy, x, y, radius))
+                {
+                    image[x, y] = new L8(255); // Torna o pixel branco
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifica se algum pixel vizinho está branco (255) dentro do raio.
+    /// </summary>
+    private static bool IsNeighborWhite(Image<L8> image, int x, int y, int radius)
+    {
+        for (int offsetY = -radius; offsetY <= radius; offsetY++)
+        {
+            for (int offsetX = -radius; offsetX <= radius; offsetX++)
+            {
+                int neighborX = x + offsetX;
+                int neighborY = y + offsetY;
+
+                // Verifica se o pixel vizinho está dentro dos limites da imagem
+                if (neighborX >= 0 && neighborX < image.Width &&
+                    neighborY >= 0 && neighborY < image.Height)
+                {
+                    if (image[neighborX, neighborY].PackedValue == 255)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Verifica se algum pixel vizinho está preto (0) dentro do raio.
+    /// </summary>
+    private static bool IsNeighborBlack(Image<L8> image, int x, int y, int radius)
+    {
+        for (int offsetY = -radius; offsetY <= radius; offsetY++)
+        {
+            for (int offsetX = -radius; offsetX <= radius; offsetX++)
+            {
+                int neighborX = x + offsetX;
+                int neighborY = y + offsetY;
+
+                if (neighborX >= 0 && neighborX < image.Width &&
+                    neighborY >= 0 && neighborY < image.Height)
+                {
+                    if (image[neighborX, neighborY].PackedValue == 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public static Image<L8> CombineWithOriginalAlpha(Image<L8> originalMask, Image<L8> featheredMask)
+    {
+        var combinedMask = originalMask.Clone();
+
+        for (int y = 0; y < originalMask.Height; y++)
+        {
+            for (int x = 0; x < originalMask.Width; x++)
+            {
+                byte originalAlpha = originalMask[x, y].PackedValue;
+                byte featheredAlpha = featheredMask[x, y].PackedValue;
+
+                // Preserve o alpha original para áreas internas (alpha >= 200)
+                if (originalAlpha >= 200)
+                {
+                    combinedMask[x, y] = new L8(originalAlpha);
+                }
+                else
+                {
+                    // Use o alpha suavizado para áreas externas
+                    combinedMask[x, y] = new L8(Math.Max(originalAlpha, featheredAlpha));
+                }
+            }
+        }
+
+        return combinedMask;
+    }
+
+    public static Image<L8> FeatherMaskOptimized(Image<L8> mask, int featherRadius)
+    {
+        var featheredMask = mask.Clone();
+
+        // Array para armazenar a intensidade da máscara
+        float[,] distances = new float[mask.Width, mask.Height];
+
+        // Passo 1: Inicialize o array com base nos valores da máscara
+        for (int y = 0; y < mask.Height; y++)
+        {
+            for (int x = 0; x < mask.Width; x++)
+            {
+                distances[x, y] = mask[x, y].PackedValue == 255 ? 0 : float.MaxValue;
+            }
+        }
+
+        // Passo 2: Aplicar a Transformada de Distância (Passagem para frente)
+        for (int y = 0; y < mask.Height; y++)
+        {
+            for (int x = 0; x < mask.Width; x++)
+            {
+                if (x > 0)
+                    distances[x, y] = Math.Min(distances[x, y], distances[x - 1, y] + 1);
+                if (y > 0)
+                    distances[x, y] = Math.Min(distances[x, y], distances[x, y - 1] + 1);
+            }
+        }
+
+        // Passo 3: Aplicar a Transformada de Distância (Passagem para trás)
+        for (int y = mask.Height - 1; y >= 0; y--)
+        {
+            for (int x = mask.Width - 1; x >= 0; x--)
+            {
+                if (x < mask.Width - 1)
+                    distances[x, y] = Math.Min(distances[x, y], distances[x + 1, y] + 1);
+                if (y < mask.Height - 1)
+                    distances[x, y] = Math.Min(distances[x, y], distances[x, y + 1] + 1);
+            }
+        }
+
+        // Passo 4: Aplicar feathering com base no raio
+        for (int y = 0; y < mask.Height; y++)
+        {
+            for (int x = 0; x < mask.Width; x++)
+            {
+                float alphaFactor = Math.Min(1, distances[x, y] / featherRadius);
+                byte originalAlpha = mask[x, y].PackedValue;
+
+                // Preserve o alpha original se for totalmente preenchido
+                if (originalAlpha == 255)
+                {
+                    featheredMask[x, y] = new L8(originalAlpha);
+                }
+                else
+                {
+                    featheredMask[x, y] = new L8((byte)(originalAlpha * alphaFactor));
+                }
+            }
+        }
+
+        return featheredMask;
+    }
+
+    public static Image<L8> FeatherMask(Image<L8> mask, int featherRadius)
+    {
+        var featheredMask = mask.Clone();
+
+        for (int y = 0; y < mask.Height; y++)
+        {
+            for (int x = 0; x < mask.Width; x++)
+            {
+                int distanceToEdge = CalculateDistanceToEdge(mask, x, y, featherRadius);
+
+                // Reduza o alpha gradualmente baseado na distância
+                if (distanceToEdge < featherRadius)
+                {
+                    float alphaFactor = (float)distanceToEdge / featherRadius;
+                    byte originalAlpha = mask[x, y].PackedValue;
+                    featheredMask[x, y] = new L8((byte)(originalAlpha * alphaFactor));
+                }
+            }
+        }
+
+        return featheredMask;
+    }
+
+    private static int CalculateDistanceToEdge(Image<L8> mask, int x, int y, int radius)
+    {
+        int minDistance = radius;
+
+        // Verifica a distância para cada pixel ao redor
+        for (int offsetY = -radius; offsetY <= radius; offsetY++)
+        {
+            for (int offsetX = -radius; offsetX <= radius; offsetX++)
+            {
+                int neighborX = x + offsetX;
+                int neighborY = y + offsetY;
+
+                if (neighborX >= 0 && neighborX < mask.Width &&
+                    neighborY >= 0 && neighborY < mask.Height)
+                {
+                    if (mask[neighborX, neighborY].PackedValue == 0)
+                    {
+                        int distance = Math.Abs(offsetX) + Math.Abs(offsetY);
+                        minDistance = Math.Min(minDistance, distance);
+                    }
+                }
+            }
+        }
+
+        return minDistance;
     }
 }

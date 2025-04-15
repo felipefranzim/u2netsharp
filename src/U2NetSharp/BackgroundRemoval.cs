@@ -49,17 +49,25 @@ public sealed class BackgroundRemoval
                 {
                     using var originalImage = Image.Load<Rgba32>(originalMs);
 
-                    Console.WriteLine("Applying mask...");
+                    Console.WriteLine("Post processing mask...");
                     var mask = ImageProcessing.PostprocessMask(output, originalImage.Width, originalImage.Height);
+
+                    mask.Dilate(3);
                     mask.Mutate(x =>
                     {
-                        x.GaussianBlur(2); // Suaviza bordas abruptas
+                        x.GaussianBlur(3); // Suaviza bordas abruptas
                     });
 
-                    ImageProcessing.Binarize(mask, 0.6f); // Binariza a máscara
+                    Console.WriteLine("Feathering mask...");
+                    var feathredMask = ImageProcessing.FeatherMaskOptimized(mask, 10); // Suaviza bordas ainda mais
+                    mask = ImageProcessing.CombineWithOriginalAlpha(mask, feathredMask);
 
+                    //ImageProcessing.Binarize(mask, 0.6f); // Binariza a máscara
+
+                    Console.WriteLine("Applying mask...");
                     var final = ImageProcessing.ApplyMaskWithWhiteBackground(originalImage.CloneAs<Rgba32>(), mask);
 
+                    Console.WriteLine("Saving mask...");
                     using (var finalMs = new MemoryStream())
                     {
                         final.SaveAsJpeg(finalMs, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder() { Quality = 100 });
