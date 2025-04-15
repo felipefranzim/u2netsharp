@@ -29,7 +29,8 @@ public sealed class BackgroundRemoval
     {
         try
         {
-            using (var ms = new MemoryStream(image))
+            var preparedImage = ImageProcessing.PrepareImageSize(image, 1920);
+            using (var ms = new MemoryStream(preparedImage))
             {
                 Console.WriteLine("Processing image...");
                 var inputData = ImageProcessing.PreprocessImage(ms);
@@ -45,7 +46,7 @@ public sealed class BackgroundRemoval
                 var outputResult = results.First(r => r.AsTensor<float>().Dimensions.SequenceEqual(new[] { 1, 1, 320, 320 }));
                 var output = outputResult.AsTensor<float>().ToArray();
 
-                using(var originalMs = new MemoryStream(image))
+                using(var originalMs = new MemoryStream(preparedImage))
                 {
                     using var originalImage = Image.Load<Rgba32>(originalMs);
 

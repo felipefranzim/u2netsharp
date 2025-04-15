@@ -6,6 +6,22 @@ namespace U2NetSharp;
 
 public static class ImageProcessing
 {
+    public static byte[] PrepareImageSize(byte[] imageBytes, int width)
+    {
+        int height = 0;
+        using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageBytes);
+
+        if(image.Width > width)
+        {
+            var aspectRatio = (float)image.Width / image.Height;
+            height = (int)(width / aspectRatio);
+            image.Mutate(x => x.Resize(width, height));
+        }
+
+        using var ms = new MemoryStream();
+        image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder() { Quality = 100 });
+        return ms.ToArray();
+    }
     public static float[] PreprocessImage(Stream imageStream)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageStream);
