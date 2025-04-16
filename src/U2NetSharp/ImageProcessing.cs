@@ -22,6 +22,7 @@ public static class ImageProcessing
         image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder() { Quality = 100 });
         return ms.ToArray();
     }
+
     public static float[] PreprocessImage(Stream imageStream)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageStream);
@@ -32,8 +33,8 @@ public static class ImageProcessing
             x.Resize(320, 320);
         });
 
-        // Valores de média e desvio padrão em RGB
-        float[] mean = { 0.485f, 0.456f, 0.406f }; // RGB
+        // Valores de média e desvio padrão em RGB (testar com ordem BGR para comparar resultados também)
+        float[] mean = { 0.485f, 0.456f, 0.406f }; // RGB (testar com ordem BGR para comparar resultados também)
         float[] std = { 0.229f, 0.224f, 0.225f };
 
         var input = new float[3 * 320 * 320];
@@ -45,7 +46,7 @@ public static class ImageProcessing
 
                 int idx = y * 320 + x;
 
-                // RGB order (corrigido)
+                // RGB (testar com ordem BGR para comparar resultados também)
                 input[0 * 320 * 320 + idx] = ((pixel.R / 255f) - mean[0]) / std[0];
                 input[1 * 320 * 320 + idx] = ((pixel.G / 255f) - mean[1]) / std[1];
                 input[2 * 320 * 320 + idx] = ((pixel.B / 255f) - mean[2]) / std[2];
@@ -102,7 +103,7 @@ public static class ImageProcessing
             {
                 byte alpha = mask[x, y].PackedValue;
 
-                // Mistura gradual do alpha
+                // Mistura o alpha de forma gradual
                 output[x, y] = new Rgba32(
                     (byte)((image[x, y].R * alpha + white.R * (255 - alpha)) / 255),
                     (byte)((image[x, y].G * alpha + white.G * (255 - alpha)) / 255),
@@ -126,7 +127,7 @@ public static class ImageProcessing
                 // Reduz o alpha gradualmente nas bordas
                 if (alpha > 0 && alpha < 255)
                 {
-                    alpha = (byte)(alpha * 0.9); // Ajustar o fator conforme necessário
+                    alpha = (byte)(alpha * 0.9); // Ajustar o fator conforme necessário. O 0.9 tem tido efeito positivo na maioria dos testes
                 }
 
                 mask[x, y] = new L8(alpha);
@@ -136,14 +137,11 @@ public static class ImageProcessing
         return mask;
     }
 
-    /// <summary>
-    /// Binariza uma imagem em escala de cinza (L8) com base em um limiar.
-    /// Pixels acima ou iguais ao limiar tornam-se brancos (255), enquanto os abaixo tornam-se pretos (0).
-    /// </summary>
-    /// <param name="image">Imagem em escala de cinza (L8).</param>
-    /// <param name="threshold">Limiar para binarização (0.0 a 1.0).</param>
     public static void Binarize(Image<L8> image, float threshold)
     {
+        // Binariza uma imagem em escala de cinza (L8) com base em um limiar.
+        // Pixels acima ou iguais ao limiar tornam-se brancos (255), enquanto os abaixo tornam-se pretos (0).
+
         image.ProcessPixelRows(accessor =>
         {
             for (int y = 0; y < accessor.Height; y++)
@@ -154,7 +152,7 @@ public static class ImageProcessing
                     // Acessa o valor do pixel usando PackedValue
                     var pixelValue = row[x].PackedValue;
 
-                    // Se o valor do pixel for maior ou igual ao threshold, torne branco; caso contrário, preto
+                    // Se o valor do pixel for maior ou igual ao threshold, a gente transforma ele em branco; caso contrário, em preto
                     row[x] = pixelValue >= (byte)(threshold * 255) ? new L8(255) : new L8(0);
                 }
             }
@@ -162,7 +160,7 @@ public static class ImageProcessing
     }
 
     /// <summary>
-    /// Aplica a operação de Erosão na imagem (L8).
+    /// Aplica a operação de Erosão na imagem
     /// Contrai áreas brancas ao redor de pixels brilhantes.
     /// </summary>
     public static void Erode(this Image<L8> image, int radius)
@@ -185,8 +183,8 @@ public static class ImageProcessing
     }
 
     /// <summary>
-    /// Aplica a operação de Dilatação na imagem (L8).
-    /// Expande áreas brancas ao redor de pixels brilhantes.
+    /// Aplica a operação de Dilatação na imagem
+    /// Expande áreas brancas ao redor de pixels brilhantes
     /// </summary>
     public static void Dilate(this Image<L8> image, int radius)
     {
@@ -234,7 +232,7 @@ public static class ImageProcessing
     }
 
     /// <summary>
-    /// Verifica se algum pixel vizinho está preto (0) dentro do raio.
+    /// Verifica se algum pixel vizinho está preto (valor 0) dentro do raio.
     /// </summary>
     private static bool IsNeighborBlack(Image<L8> image, int x, int y, int radius)
     {
