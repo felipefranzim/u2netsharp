@@ -23,6 +23,8 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+.vs/
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json
@@ -53,3 +55,7 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 /src/U2NetSharp/.vs/U2NetSharp
+
+
+*.iss
+*.exe

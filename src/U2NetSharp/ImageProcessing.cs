@@ -11,7 +11,7 @@ public static class ImageProcessing
         int height = 0;
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageBytes);
 
-        if(image.Width > width)
+        if (image.Width > width)
         {
             var aspectRatio = (float)image.Width / image.Height;
             height = (int)(width / aspectRatio);
@@ -28,8 +28,8 @@ public static class ImageProcessing
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageStream);
         image.Mutate(x =>
         {
-            x.Grayscale();             // Converte para escala de cinza
-            x.GaussianBlur(2.5f);      // Reduz ruídos
+            //x.Grayscale();             // Converte para escala de cinza
+            x.GaussianBlur(2.0f);      // Reduz ruídos
             x.Resize(320, 320);
         });
 
@@ -139,8 +139,8 @@ public static class ImageProcessing
 
     public static void Binarize(Image<L8> image, float threshold)
     {
-        // Binariza uma imagem em escala de cinza (L8) com base em um limiar.
-        // Pixels acima ou iguais ao limiar tornam-se brancos (255), enquanto os abaixo tornam-se pretos (0).
+        // Binariza uma imagem em escala de cinza com base em um limiar
+        // Pixels acima ou iguais ao limiar ficam brancos (255), enquanto os abaixo ficam pretos (0)
 
         image.ProcessPixelRows(accessor =>
         {
@@ -267,14 +267,14 @@ public static class ImageProcessing
                 byte originalAlpha = originalMask[x, y].PackedValue;
                 byte featheredAlpha = featheredMask[x, y].PackedValue;
 
-                // Preserve o alpha original para áreas internas (alpha >= 200)
+                // Preserva o alpha original para áreas internas (alpha >= 200)
                 if (originalAlpha >= 200)
                 {
                     combinedMask[x, y] = new L8(originalAlpha);
                 }
                 else
                 {
-                    // Use o alpha suavizado para áreas externas
+                    // Usa o alpha suavizado para áreas externas
                     combinedMask[x, y] = new L8(Math.Max(originalAlpha, featheredAlpha));
                 }
             }
@@ -290,7 +290,7 @@ public static class ImageProcessing
         // Array para armazenar a intensidade da máscara
         float[,] distances = new float[mask.Width, mask.Height];
 
-        // Passo 1: Inicialize o array com base nos valores da máscara
+        // Passo 1: Inicialização o array com base nos valores da máscara
         for (int y = 0; y < mask.Height; y++)
         {
             for (int x = 0; x < mask.Width; x++)
@@ -299,7 +299,7 @@ public static class ImageProcessing
             }
         }
 
-        // Passo 2: Aplicar a Transformada de Distância (Passagem para frente)
+        // Passo 2: Aplicar a transformacao de distancia (passagem para frente)
         for (int y = 0; y < mask.Height; y++)
         {
             for (int x = 0; x < mask.Width; x++)
@@ -311,7 +311,7 @@ public static class ImageProcessing
             }
         }
 
-        // Passo 3: Aplicar a Transformada de Distância (Passagem para trás)
+        // Passo 3: Aplicar a transformacao de distancia (Ppassagem para trás)
         for (int y = mask.Height - 1; y >= 0; y--)
         {
             for (int x = mask.Width - 1; x >= 0; x--)
@@ -328,10 +328,11 @@ public static class ImageProcessing
         {
             for (int x = 0; x < mask.Width; x++)
             {
-                float alphaFactor = Math.Min(1, distances[x, y] / featherRadius);
+                float alphaFactor = Math.Min(1, Math.Max(0, (featherRadius - distances[x, y]) / featherRadius));
+                //float alphaFactor = Math.Min(1, distances[x, y] / featherRadius);
                 byte originalAlpha = mask[x, y].PackedValue;
 
-                // Preserve o alpha original se for totalmente preenchido
+                // Preserva o alpha original se for totalmente preenchido
                 if (originalAlpha == 255)
                 {
                     featheredMask[x, y] = new L8(originalAlpha);
@@ -344,55 +345,5 @@ public static class ImageProcessing
         }
 
         return featheredMask;
-    }
-
-    public static Image<L8> FeatherMask(Image<L8> mask, int featherRadius)
-    {
-        var featheredMask = mask.Clone();
-
-        for (int y = 0; y < mask.Height; y++)
-        {
-            for (int x = 0; x < mask.Width; x++)
-            {
-                int distanceToEdge = CalculateDistanceToEdge(mask, x, y, featherRadius);
-
-                // Reduza o alpha gradualmente baseado na distância
-                if (distanceToEdge < featherRadius)
-                {
-                    float alphaFactor = (float)distanceToEdge / featherRadius;
-                    byte originalAlpha = mask[x, y].PackedValue;
-                    featheredMask[x, y] = new L8((byte)(originalAlpha * alphaFactor));
-                }
-            }
-        }
-
-        return featheredMask;
-    }
-
-    private static int CalculateDistanceToEdge(Image<L8> mask, int x, int y, int radius)
-    {
-        int minDistance = radius;
-
-        // Verifica a distância para cada pixel ao redor
-        for (int offsetY = -radius; offsetY <= radius; offsetY++)
-        {
-            for (int offsetX = -radius; offsetX <= radius; offsetX++)
-            {
-                int neighborX = x + offsetX;
-                int neighborY = y + offsetY;
-
-                if (neighborX >= 0 && neighborX < mask.Width &&
-                    neighborY >= 0 && neighborY < mask.Height)
-                {
-                    if (mask[neighborX, neighborY].PackedValue == 0)
-                    {
-                        int distance = Math.Abs(offsetX) + Math.Abs(offsetY);
-                        minDistance = Math.Min(minDistance, distance);
-                    }
-                }
-            }
-        }
-
-        return minDistance;
     }
 }

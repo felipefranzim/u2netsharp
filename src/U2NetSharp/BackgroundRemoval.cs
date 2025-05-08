@@ -53,14 +53,14 @@ public sealed class BackgroundRemoval
                     Console.WriteLine("Post processing mask...");
                     var mask = ImageProcessing.PostprocessMask(output, originalImage.Width, originalImage.Height);
 
-                    mask.Dilate(3);
+                    mask.Dilate(1);
                     mask.Mutate(x =>
                     {
-                        x.GaussianBlur(3); // Suaviza bordas abruptas
+                        x.GaussianBlur(1.5f); // Suaviza bordas abruptas
                     });
 
                     Console.WriteLine("Feathering mask...");
-                    var feathredMask = ImageProcessing.FeatherMaskOptimized(mask, 10); // Suaviza bordas ainda mais
+                    var feathredMask = ImageProcessing.FeatherMaskOptimized(mask, 2); // Suaviza bordas ainda mais
                     mask = ImageProcessing.CombineWithOriginalAlpha(mask, feathredMask);
 
                     //ImageProcessing.Binarize(mask, 0.6f); // Binariza a máscara
