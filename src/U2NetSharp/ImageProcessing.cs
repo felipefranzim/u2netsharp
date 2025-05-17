@@ -1,4 +1,5 @@
 ﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -27,22 +28,43 @@ public static class ImageProcessing
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageStream);
 
-        // Obs: o desempenho do modelo U2Net (ou qualquer rede de segmentação baseada em deep learning)
+        // Obs: o desempenho do modelo U2Net
         // depende muito da qualidade e das características da imagem de entrada.
         // Por isso aplicamos um pouco de brilho e contraste, junto com uma leve nitidez, para melhorar um pouco casos
         // de imagens com baixa qualidade ou com iluminação ruim.
         image.Mutate(ctx => ctx
+            //x.Grayscale()
             .Brightness(1.05f) // leve aumento no brilho
             .Contrast(1.2f)    // leve aumento no contraste
             .GaussianSharpen(0.75f) // Aplica leve nitidez
         );
 
-        image.Mutate(x =>
-        {
-            //x.Grayscale();             // Converte para escala de cinza
-            x.GaussianBlur(2.0f);      // Reduz ruídos
-            x.Resize(320, 320);
-        });
+        //  Recorte da região superior (onde está o cabelo)
+        //int hairRegionHeight = (int)(image.Height / 2.5);
+        //var hairRegion = image.Clone(ctx => ctx
+        //    .Crop(new Rectangle(0, 0, image.Width, hairRegionHeight))
+        //    .Contrast(1.4f)
+        //    .GaussianSharpen(1.2f)
+        //);
+
+        //// Substituir topo da imagem original com a parte do cabelo, onde reforçamos o contraste e nitidez
+        //for (int y = 0; y < hairRegionHeight; y++)
+        //{
+        //    var hairSpan = hairRegion.DangerousGetPixelRowMemory(y).Span;
+        //    var imageSpan = image.DangerousGetPixelRowMemory(y).Span;
+
+        //    for (int x = 0; x < image.Width; x++)
+        //    {
+        //        imageSpan[x] = hairSpan[x];
+        //    }
+        //}
+
+        image.Mutate(ctx => ctx
+            //x.Grayscale()
+            .GaussianBlur(2.0f)      // Reduz ruídos
+            .Resize(320, 320)
+        );
+
 
         // Valores de média e desvio padrão em RGB (testar com ordem BGR para comparar resultados também)
         float[] mean = { 0.485f, 0.456f, 0.406f }; // RGB (testar com ordem BGR para comparar resultados também)

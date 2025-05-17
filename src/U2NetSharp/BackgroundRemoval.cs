@@ -56,7 +56,7 @@ public sealed class BackgroundRemoval
                     mask.Dilate(1);
                     mask.Mutate(x =>
                     {
-                        x.GaussianBlur(1.5f); // Suaviza bordas abruptas
+                        x.GaussianBlur(1.0f); // Suaviza bordas abruptas (1.5)
                     });
 
                     mask.SaveAsBmp($"{AppDomain.CurrentDomain.BaseDirectory}mask.bmp");
