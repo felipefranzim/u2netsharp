@@ -26,6 +26,17 @@ public static class ImageProcessing
     public static float[] PreprocessImage(Stream imageStream)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageStream);
+
+        // Obs: o desempenho do modelo U2Net (ou qualquer rede de segmentação baseada em deep learning)
+        // depende muito da qualidade e das características da imagem de entrada.
+        // Por isso aplicamos um pouco de brilho e contraste, junto com uma leve nitidez, para melhorar um pouco casos
+        // de imagens com baixa qualidade ou com iluminação ruim.
+        image.Mutate(ctx => ctx
+            .Brightness(1.05f) // leve aumento no brilho
+            .Contrast(1.2f)    // leve aumento no contraste
+            .GaussianSharpen(0.75f) // Aplica leve nitidez
+        );
+
         image.Mutate(x =>
         {
             //x.Grayscale();             // Converte para escala de cinza
@@ -69,6 +80,7 @@ public static class ImageProcessing
             }
         }
 
+        mask.SaveAsBmp($"{AppDomain.CurrentDomain.BaseDirectory}pre_mask.bmp");
         mask.Mutate(x =>
         {
             //x.GaussianBlur(3); // Suaviza bordas, para evitar bordas duras ou detalhes excessivos nas transições -> Ex: 1 (desfoque mais leve) | 5 (desfoque mais intenso)

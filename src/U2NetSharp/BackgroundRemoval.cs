@@ -59,6 +59,8 @@ public sealed class BackgroundRemoval
                         x.GaussianBlur(1.5f); // Suaviza bordas abruptas
                     });
 
+                    mask.SaveAsBmp($"{AppDomain.CurrentDomain.BaseDirectory}mask.bmp");
+
                     Console.WriteLine("Feathering mask...");
                     var feathredMask = ImageProcessing.FeatherMaskOptimized(mask, 2); // Suaviza bordas ainda mais
                     mask = ImageProcessing.CombineWithOriginalAlpha(mask, feathredMask);
